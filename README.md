@@ -21,32 +21,35 @@ A comprehensive Node.js backend server for WhatsApp Business API webhook handlin
 ## 🛠 Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <your-repo-url>
    cd whatsapp-backend
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Environment Setup**
    Create a `.env` file in the root directory:
+
    ```env
    # Server Configuration
    PORT=3001
    HOST=localhost
    NODE_ENV=development
-   
+
    # Frontend CORS
    FRONTEND_URL=http://localhost:5173
-   
+
    # WhatsApp Business API
    WEBHOOK_VERIFY_TOKEN=your_webhook_verify_token
    WHATSAPP_ACCESS_TOKEN=your_whatsapp_access_token
    WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
-   
+
    # Meta Graph API
    GRAPH_API_VERSION=v18.0
    GRAPH_API_URL=https://graph.facebook.com
@@ -60,6 +63,7 @@ A comprehensive Node.js backend server for WhatsApp Business API webhook handlin
 ## 📚 API Documentation
 
 ### Base URL
+
 ```
 http://localhost:3001
 ```
@@ -67,12 +71,15 @@ http://localhost:3001
 ### Endpoints
 
 #### Health Check
+
 ```http
 GET /health
 ```
+
 Returns server health status, uptime, and version information.
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -84,12 +91,15 @@ Returns server health status, uptime, and version information.
 ```
 
 #### Webhook Verification & Processing
+
 ```http
 GET /webhook
 ```
+
 WhatsApp webhook verification endpoint.
 
 **Query Parameters:**
+
 - `hub.mode` - Verification mode (should be "subscribe")
 - `hub.verify_token` - Your webhook verify token
 - `hub.challenge` - Challenge string to echo back
@@ -97,9 +107,11 @@ WhatsApp webhook verification endpoint.
 ```http
 POST /webhook
 ```
+
 Receives WhatsApp webhook payloads for message processing.
 
 **Request Body:**
+
 ```json
 {
   "object": "whatsapp_business_account",
@@ -125,17 +137,21 @@ Receives WhatsApp webhook payloads for message processing.
 ```
 
 #### Trigger Management
+
 ```http
 GET /api/triggers
 ```
+
 Get all automation triggers.
 
 ```http
 POST /api/triggers
 ```
+
 Create a new automation trigger.
 
 **Request Body:**
+
 ```json
 {
   "name": "Welcome Flow",
@@ -157,25 +173,31 @@ Create a new automation trigger.
 ```http
 PUT /api/triggers/:id
 ```
+
 Update an existing trigger.
 
 ```http
 DELETE /api/triggers/:id
 ```
+
 Delete a trigger.
 
 ```http
 POST /api/triggers/:id/test
 ```
+
 Test a trigger execution.
 
 #### WhatsApp Messaging
+
 ```http
 POST /api/whatsapp/send-message
 ```
+
 Send a WhatsApp message.
 
 **Request Body:**
+
 ```json
 {
   "to": "+1234567890",
@@ -189,9 +211,11 @@ Send a WhatsApp message.
 ```http
 POST /api/whatsapp/send-template
 ```
+
 Send a WhatsApp template message.
 
 **Request Body:**
+
 ```json
 {
   "to": "+1234567890",
@@ -235,6 +259,7 @@ whatsapp-backend/
 ## 🚀 Deployment
 
 ### Environment Variables for Production
+
 ```env
 NODE_ENV=production
 PORT=3001
@@ -246,7 +271,9 @@ WHATSAPP_PHONE_NUMBER_ID=your_production_phone_id
 ```
 
 ### Docker Support (Optional)
+
 Create a `Dockerfile`:
+
 ```dockerfile
 FROM node:18-alpine
 WORKDIR /app
@@ -273,11 +300,13 @@ curl http://localhost:3001/health
 ## 📝 Development
 
 ### Scripts
+
 - `npm start` - Start production server
 - `npm run dev` - Start development server with hot reload
 - `npm test` - Run tests
 
 ### Adding New Features
+
 1. Create route handlers in `/routes`
 2. Implement business logic in `/services`
 3. Update this README with new endpoints
@@ -288,10 +317,12 @@ curl http://localhost:3001/health
 ### Common Issues
 
 1. **Webhook Verification Failed**
+
    - Check `WEBHOOK_VERIFY_TOKEN` in `.env`
    - Ensure token matches Meta Developer settings
 
 2. **CORS Errors**
+
    - Update `FRONTEND_URL` in `.env`
    - Check CORS configuration in `server.js`
 
@@ -315,6 +346,7 @@ MIT License - see LICENSE file for details
 ## 📞 Support
 
 For issues and questions:
+
 - Create an issue in the repository
 - Check WhatsApp Business API documentation
 - Review Meta Developer documentation
