@@ -81,9 +81,9 @@ app.use('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-const HOST = process.env.HOST || 'localhost';
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
 
-app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, () => {
   console.log(`🚀 WhatsApp Webhook Server running on http://${HOST}:${PORT}`);
   console.log(`📱 Webhook URL: http://${HOST}:${PORT}/webhook`);
   console.log(`🌐 Frontend CORS: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
@@ -91,6 +91,23 @@ app.listen(PORT, HOST, () => {
   
   // Test that the server is actually working
   console.log('✅ Server is ready to accept requests');
+});
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('🔄 SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('✅ Process terminated');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('🔄 SIGINT received, shutting down gracefully');
+  server.close(() => {
+    console.log('✅ Process terminated');
+    process.exit(0);
+  });
 });
 
 module.exports = app;
