@@ -86,7 +86,7 @@ class WhatsAppService {
               flow_cta: 'Open Form',
               flow_action: 'navigate',
               flow_action_payload: {
-                screen: 'WELCOME_SCREEN',
+                screen: 'RECOMMEND',
                 data: {
                   user_name: '',
                   user_phone: phoneNumber,
