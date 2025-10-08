@@ -1,0 +1,31 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "164297206767745",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550617327",
+              "phone_number_id": "158282837372377"
+            },
+            "messages": [
+              {
+                "from": "918281348343",
+                "id": "test_msg_918281348343",
+                "timestamp": "1696743600",
+                "type": "text",
+                "text": {
+                  "body": "hello"
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}

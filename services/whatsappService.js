@@ -83,11 +83,16 @@ class WhatsAppService {
               flow_message_version: '3',
               flow_token: `flow_token_${Date.now()}`,
               flow_id: flowId,
-              flow_cta: 'Start Form',
+              flow_cta: 'Open Form',
               flow_action: 'navigate',
               flow_action_payload: {
                 screen: 'WELCOME_SCREEN',
-                data: {}
+                data: {
+                  user_name: '',
+                  user_phone: phoneNumber,
+                  form_type: 'registration',
+                  timestamp: new Date().toISOString()
+                }
               }
             }
           }
