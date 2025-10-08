@@ -19,10 +19,20 @@ const corsOptions = {
     process.env.FRONTEND_URL || 'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:3000',
-    'https://whatsapp-flow-builder-production.up.railway.app'
-  ],
+    'http://localhost:5175',
+    // Allow all localhost ports for development
+    /^http:\/\/localhost:\d+$/,
+    // Allow Railway/Vercel/Netlify deployments
+    /^https:\/\/.*\.railway\.app$/,
+    /^https:\/\/.*\.vercel\.app$/,
+    /^https:\/\/.*\.netlify\.app$/,
+    // Allow all origins in development (remove in production)
+    process.env.NODE_ENV === 'development' ? '*' : null
+  ].filter(Boolean),
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 app.use(cors(corsOptions));
 
@@ -81,9 +91,9 @@ app.use('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+const HOST = process.env.HOST || 'localhost';
 
-const server = app.listen(PORT, HOST, () => {
+app.listen(PORT, HOST, () => {
   console.log(`🚀 WhatsApp Webhook Server running on http://${HOST}:${PORT}`);
   console.log(`📱 Webhook URL: http://${HOST}:${PORT}/webhook`);
   console.log(`🌐 Frontend CORS: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
@@ -91,23 +101,6 @@ const server = app.listen(PORT, HOST, () => {
   
   // Test that the server is actually working
   console.log('✅ Server is ready to accept requests');
-});
-
-// Handle graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('🔄 SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    console.log('✅ Process terminated');
-    process.exit(0);
-  });
-});
-
-process.on('SIGINT', () => {
-  console.log('🔄 SIGINT received, shutting down gracefully');
-  server.close(() => {
-    console.log('✅ Process terminated');
-    process.exit(0);
-  });
 });
 
 module.exports = app;

@@ -68,4 +68,78 @@ router.get('/config', (req, res) => {
   });
 });
 
+// Register new flow and auto-create trigger
+router.post('/register-flow', (req, res) => {
+  try {
+    const { flowId, flowName, activationMessage, autoCreateTrigger = true } = req.body;
+
+    if (!flowId || !activationMessage) {
+      return res.status(400).json({
+        success: false,
+        error: 'flowId and activationMessage are required'
+      });
+    }
+
+    // If auto-create trigger is enabled, create a webhook trigger
+    if (autoCreateTrigger) {
+      const { createTrigger } = require('../services/triggerService');
+      
+      try {
+        const trigger = createTrigger({
+          keyword: activationMessage.toLowerCase().trim(),
+          flowId: flowId,
+          message: `Hello! Please complete this ${flowName || 'form'}:`,
+          isActive: true
+        });
+
+        console.log(`✅ Auto-created trigger for flow ${flowId}: "${activationMessage}" -> ${flowName || flowId}`);
+        
+        res.json({
+          success: true,
+          data: {
+            flowId,
+            flowName,
+            activationMessage,
+            trigger: trigger
+          },
+          message: `Flow registered successfully! Trigger created for keyword "${activationMessage}"`
+        });
+      } catch (triggerError) {
+        console.error('Error creating auto-trigger:', triggerError);
+        
+        // Flow registration succeeded, but trigger creation failed
+        res.json({
+          success: true,
+          data: {
+            flowId,
+            flowName,
+            activationMessage,
+            trigger: null
+          },
+          message: 'Flow registered successfully, but trigger creation failed',
+          warning: triggerError.message
+        });
+      }
+    } else {
+      res.json({
+        success: true,
+        data: {
+          flowId,
+          flowName,
+          activationMessage,
+          trigger: null
+        },
+        message: 'Flow registered successfully (no trigger created)'
+      });
+    }
+  } catch (error) {
+    console.error('Error registering flow:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to register flow',
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;
