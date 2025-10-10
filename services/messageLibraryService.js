@@ -133,7 +133,7 @@ class MessageLibraryService {
         type: 'standard_text',
         status: 'published',
         contentPayload: {
-          body: 'Dr. Sharma\'s prescription is ready:\n1. Paracetamol (10 tabs)\n2. Vitamin D (5 tabs)\nTotal: ₹450\nTo confirm and pay, type ok.'
+          body: 'Dr. Sharma\'s prescription is ready:\n1. Paracetamol (10 tabs)\n2. Vitamin D (5 tabs)\nTotal: ₹450\nTo confirm and pay, type confirm.'
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -372,9 +372,9 @@ class MessageLibraryService {
         updatedAt: new Date().toISOString()
       },
       {
-        triggerId: 'trigger_ok',
+        triggerId: 'trigger_confirm',
         triggerType: 'keyword_match',
-        triggerValue: ['ok'],
+        triggerValue: ['confirm'],
         nextAction: 'send_message',
         targetId: 'msg_ok',
         messageId: 'msg_ok',
