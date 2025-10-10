@@ -56,7 +56,7 @@ class MessageLibraryService {
         type: 'standard_text',
         status: 'published',
         contentPayload: {
-          body: 'Dr. Sharma\'s next available slots:\n1️⃣ Mon, Oct 14, 9:30 AM → sharma930\n2️⃣ Wed, Oct 16, 4:00 PM → sharma4pm'
+          body: 'Dr. Sharma\'s next available slots:\n1️⃣ Mon, Oct 14, 9:30 AM → 930\n2️⃣ Wed, Oct 16, 4:00 PM → 4pm'
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -302,9 +302,9 @@ class MessageLibraryService {
         updatedAt: new Date().toISOString()
       },
       {
-        triggerId: 'trigger_sharma930',
+        triggerId: 'trigger_930',
         triggerType: 'keyword_match',
-        triggerValue: ['sharma930'],
+        triggerValue: ['930'],
         nextAction: 'send_message',
         targetId: 'msg_sharma930',
         messageId: 'msg_sharma930',
@@ -312,9 +312,9 @@ class MessageLibraryService {
         updatedAt: new Date().toISOString()
       },
       {
-        triggerId: 'trigger_sharma4pm',
+        triggerId: 'trigger_4pm',
         triggerType: 'keyword_match',
-        triggerValue: ['sharma4pm'],
+        triggerValue: ['4pm'],
         nextAction: 'send_message',
         targetId: 'msg_sharma4pm',
         messageId: 'msg_sharma4pm',
