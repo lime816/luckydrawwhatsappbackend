@@ -8,29 +8,7 @@ class MessageLibraryService {
     this.messages = [
       {
         messageId: 'msg_hi',
-        name: 'Welcome - Patient Type Selection',
-        type: 'standard_text',
-        status: 'published',
-        contentPayload: {
-          body: 'Hello! Welcome to Daya Hospital. Are you a New Patient or an Existing Patient?\n1️⃣ New Patient → new\n2️⃣ Existing Patient → exist'
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        messageId: 'msg_new',
-        name: 'New Patient Registration',
-        type: 'standard_text',
-        status: 'published',
-        contentPayload: {
-          body: 'Welcome to Daya Hospital! 🏥\nPlease share your Name and Mobile Number to register as a New Patient.'
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        messageId: 'msg_exist',
-        name: 'Existing Patient Menu',
+        name: 'Welcome - Existing Patient Menu',
         type: 'standard_text',
         status: 'published',
         contentPayload: {
@@ -258,26 +236,6 @@ class MessageLibraryService {
         nextAction: 'send_message',
         targetId: 'msg_hi',
         messageId: 'msg_hi',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        triggerId: 'trigger_new',
-        triggerType: 'keyword_match',
-        triggerValue: ['new'],
-        nextAction: 'send_message',
-        targetId: 'msg_new',
-        messageId: 'msg_new',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        triggerId: 'trigger_exist',
-        triggerType: 'keyword_match',
-        triggerValue: ['exist'],
-        nextAction: 'send_message',
-        targetId: 'msg_exist',
-        messageId: 'msg_exist',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       },
