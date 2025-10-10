@@ -1,4 +1,3 @@
-const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -7,12 +6,12 @@ require('dotenv').config();
 const webhookRoutes = require('./routes/webhook');
 const triggerRoutes = require('./routes/triggers');
 const whatsappRoutes = require('./routes/whatsapp');
+const messageLibraryRoutes = require('./routes/messageLibrary');
 
 const app = express();
 
 // Security middleware
 app.use(helmet());
-
 // CORS configuration
 const corsOptions = {
   origin: [
@@ -58,6 +57,7 @@ app.get('/health', (req, res) => {
 app.use('/webhook', webhookRoutes);
 app.use('/api/triggers', triggerRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/message-library', messageLibraryRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -68,6 +68,7 @@ app.get('/', (req, res) => {
       webhook: '/webhook',
       triggers: '/api/triggers',
       whatsapp: '/api/whatsapp',
+      messageLibrary: '/api/message-library',
       health: '/health'
     }
   });

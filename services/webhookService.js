@@ -1,11 +1,11 @@
 const { sendFlowMessage } = require('./whatsappService');
 const { findMatchingTrigger } = require('./triggerService');
+const messageLibraryService = require('./messageLibraryService');
 
 /**
  * Process incoming webhook payload from WhatsApp Business API
  */
 async function processWebhookPayload(payload) {
-  console.log('📨 Processing webhook payload:', JSON.stringify(payload, null, 2));
 
   if (payload.object !== 'whatsapp_business_account') {
     console.log('📝 Not a WhatsApp Business webhook, ignoring');
@@ -53,17 +53,45 @@ async function handleIncomingMessage(message) {
 
     console.log(`💬 Message text: "${messageText}"`);
 
-    // Find matching trigger
-    const trigger = findMatchingTrigger(messageText);
+    // NEW: Use Message Library instead of old trigger system
+    const matchingTriggers = messageLibraryService.findMatchingTriggers(messageText);
     
-    if (trigger && trigger.isActive) {
-      console.log(`🎯 Found matching trigger: "${trigger.keyword}" -> Flow: ${trigger.flowId}`);
-      await sendFlowMessage(message.from, trigger.flowId, trigger.message);
+    if (matchingTriggers.length > 0) {
+      console.log(`🎯 Found ${matchingTriggers.length} matching trigger(s)`);
       
-      // Log the successful trigger activation
-      console.log(`✅ Successfully sent flow ${trigger.flowId} to ${message.from}`);
+      for (const trigger of matchingTriggers) {
+        if (trigger.nextAction === 'send_message') {
+          // Get the message from library
+          const messageEntry = messageLibraryService.getMessageById(trigger.targetId);
+          
+          if (messageEntry && messageEntry.status === 'published') {
+            console.log(`📤 Sending library message: "${messageEntry.name}" to ${message.from}`);
+            
+            try {
+              await messageLibraryService.sendLibraryMessage(messageEntry, message.from);
+              console.log(`✅ Successfully sent message "${messageEntry.name}" to ${message.from}`);
+            } catch (error) {
+              console.error(`❌ Failed to send message "${messageEntry.name}":`, error.message);
+            }
+          } else {
+            console.log(`⚠️  Message ${trigger.targetId} not found or not published`);
+          }
+        } else if (trigger.nextAction === 'start_flow') {
+          // Fallback to old flow system for flow triggers
+          console.log(`🔄 Starting flow: ${trigger.targetId}`);
+          await sendFlowMessage(message.from, trigger.targetId, 'Please complete this form:');
+        }
+      }
     } else {
-      console.log(`📝 No active trigger found for message: "${messageText}"`);
+      console.log(`📝 No matching triggers found for message: "${messageText}"`);
+      
+      // Fallback to old trigger system for backward compatibility
+      const oldTrigger = findMatchingTrigger(messageText);
+      if (oldTrigger && oldTrigger.isActive) {
+        console.log(`🔄 Using legacy trigger: "${oldTrigger.keyword}" -> Flow: ${oldTrigger.flowId}`);
+        await sendFlowMessage(message.from, oldTrigger.flowId, oldTrigger.message);
+        console.log(`✅ Successfully sent legacy flow ${oldTrigger.flowId} to ${message.from}`);
+      }
     }
   } catch (error) {
     console.error('❌ Error handling incoming message:', error);
