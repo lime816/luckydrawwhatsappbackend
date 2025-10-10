@@ -100,7 +100,7 @@ class MessageLibraryService {
         type: 'standard_text',
         status: 'published',
         contentPayload: {
-          body: 'Dr. Sharma has advised a Full Body Checkup. Total ₹1200.\nPay to confirm. [Payment Link]\nAfter payment, type labpay.'
+          body: 'Dr. Sharma has advised a Full Body Checkup. Total ₹1200.\nPay to confirm. [Payment Link]\nAfter payment, type lpay.'
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -111,7 +111,7 @@ class MessageLibraryService {
         type: 'standard_text',
         status: 'published',
         contentPayload: {
-          body: 'Lab Test Confirmed! Token L-035.\nPlease proceed to the 2nd Floor Laboratory.\nOnce done, type labrep to check for results.'
+          body: 'Lab Test Confirmed! Token L-035.\nPlease proceed to the 2nd Floor Laboratory.\nOnce done, type lrep to check for results.'
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -342,9 +342,9 @@ class MessageLibraryService {
         updatedAt: new Date().toISOString()
       },
       {
-        triggerId: 'trigger_labpay',
+        triggerId: 'trigger_lpay',
         triggerType: 'keyword_match',
-        triggerValue: ['labpay'],
+        triggerValue: ['lpay'],
         nextAction: 'send_message',
         targetId: 'msg_labpay',
         messageId: 'msg_labpay',
@@ -354,7 +354,7 @@ class MessageLibraryService {
       {
         triggerId: 'trigger_labrep',
         triggerType: 'keyword_match',
-        triggerValue: ['labrep'],
+        triggerValue: ['lrep'],
         nextAction: 'send_message',
         targetId: 'msg_labrep',
         messageId: 'msg_labrep',
