@@ -42,10 +42,17 @@ async function handleIncomingMessage(message) {
     // Extract message text based on message type
     if (message.type === 'text' && message.text) {
       messageText = message.text.body.toLowerCase().trim();
-    } else if (message.type === 'interactive' && message.interactive?.nfm_reply) {
-      // Handle flow responses
-      await handleFlowResponse(message);
-      return;
+    } else if (message.type === 'interactive') {
+      // Handle interactive messages (buttons, lists, flows)
+      if (message.interactive.nfm_reply) {
+        // Handle flow responses
+        await handleFlowResponse(message);
+        return;
+      } else if (message.interactive.button_reply || message.interactive.list_reply) {
+        // Handle button clicks and list selections
+        await handleInteractiveResponse(message);
+        return;
+      }
     } else {
       console.log(`📝 Message type '${message.type}' not supported for triggers`);
       return;
@@ -96,6 +103,39 @@ async function handleIncomingMessage(message) {
   } catch (error) {
     console.error('❌ Error handling incoming message:', error);
     throw error;
+  }
+}
+
+/**
+ * Handle interactive message responses (buttons and lists)
+ */
+async function handleInteractiveResponse(message) {
+  try {
+    console.log(`🔘 Processing interactive response from ${message.from}:`, message.interactive);
+    
+    const result = messageLibraryService.processInteractiveResponse(message.interactive);
+    
+    if (result && result.nextMessage) {
+      console.log(`📤 Sending next message: "${result.nextMessage.name}" to ${message.from}`);
+      
+      try {
+        await messageLibraryService.sendLibraryMessage(result.nextMessage, message.from);
+        console.log(`✅ Successfully sent interactive response message to ${message.from}`);
+      } catch (error) {
+        console.error(`❌ Failed to send interactive response message:`, error.message);
+      }
+    } else {
+      console.log(`📝 No matching trigger found for interactive response from ${message.from}`);
+      
+      // Send a fallback message
+      const fallbackMessage = messageLibraryService.getMessageById('msg_welcome_interactive');
+      if (fallbackMessage) {
+        console.log(`🔄 Sending fallback welcome message to ${message.from}`);
+        await messageLibraryService.sendLibraryMessage(fallbackMessage, message.from);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error handling interactive response:', error);
   }
 }
 
@@ -189,10 +229,52 @@ async function simulateWebhook(testMessage, phoneNumber) {
   };
 }
 
+/**
+ * Simulate interactive webhook for testing button/list responses
+ */
+async function simulateInteractiveWebhook(interactiveData, phoneNumber) {
+  const mockPayload = {
+    object: 'whatsapp_business_account',
+    entry: [{
+      id: 'test-entry',
+      changes: [{
+        field: 'messages',
+        value: {
+          messaging_product: 'whatsapp',
+          metadata: {
+            display_phone_number: process.env.WHATSAPP_PHONE_NUMBER_ID || '15550617327',
+            phone_number_id: process.env.WHATSAPP_PHONE_NUMBER_ID || '158282837372377'
+          },
+          messages: [{
+            id: `test-interactive-${Date.now()}`,
+            from: phoneNumber,
+            timestamp: Math.floor(Date.now() / 1000).toString(),
+            type: 'interactive',
+            interactive: interactiveData
+          }]
+        }
+      }]
+    }]
+  };
+
+  console.log('🧪 Simulating interactive webhook with test payload');
+  await processWebhookPayload(mockPayload);
+  
+  return {
+    success: true,
+    message: 'Test interactive webhook processed successfully',
+    interactiveData,
+    phoneNumber,
+    timestamp: new Date().toISOString()
+  };
+}
+
 module.exports = {
   processWebhookPayload,
   handleIncomingMessage,
+  handleInteractiveResponse,
   handleFlowResponse,
   handleMessageStatus,
-  simulateWebhook
+  simulateWebhook,
+  simulateInteractiveWebhook
 };

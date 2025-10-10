@@ -276,4 +276,188 @@ router.post('/test-import', (req, res) => {
   }
 });
 
+// Interactive Message Endpoints
+
+// Process interactive message response (button clicks, list selections)
+router.post('/interactive/process', async (req, res) => {
+  try {
+    const { interactiveData, phoneNumber } = req.body;
+    
+    if (!interactiveData || !phoneNumber) {
+      return res.status(400).json({ error: 'interactiveData and phoneNumber are required' });
+    }
+    
+    const result = messageLibraryService.processInteractiveResponse(interactiveData);
+    
+    if (result && result.nextMessage) {
+      // Send the next message automatically
+      const sendResult = await messageLibraryService.sendLibraryMessage(result.nextMessage, phoneNumber);
+      
+      res.json({
+        success: true,
+        trigger: result.trigger,
+        nextMessage: result.nextMessage,
+        sendResult
+      });
+    } else {
+      res.json({
+        success: false,
+        message: 'No matching trigger found for interactive response',
+        interactiveData
+      });
+    }
+  } catch (error) {
+    console.error('Error processing interactive response:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get button information for a message
+router.get('/messages/:messageId/buttons', (req, res) => {
+  try {
+    const buttons = messageLibraryService.getMessageButtons(req.params.messageId);
+    res.json({
+      messageId: req.params.messageId,
+      buttons,
+      count: buttons.length
+    });
+  } catch (error) {
+    console.error('Error getting message buttons:', error);
+    res.status(500).json({ error: 'Failed to get message buttons' });
+  }
+});
+
+// Get list options for a message
+router.get('/messages/:messageId/list-options', (req, res) => {
+  try {
+    const options = messageLibraryService.getMessageListOptions(req.params.messageId);
+    res.json({
+      messageId: req.params.messageId,
+      options,
+      count: options.length
+    });
+  } catch (error) {
+    console.error('Error getting message list options:', error);
+    res.status(500).json({ error: 'Failed to get message list options' });
+  }
+});
+
+// Find button trigger
+router.post('/triggers/button', (req, res) => {
+  try {
+    const { buttonId } = req.body;
+    
+    if (!buttonId) {
+      return res.status(400).json({ error: 'buttonId is required' });
+    }
+    
+    const trigger = messageLibraryService.findButtonTrigger(buttonId);
+    
+    if (trigger) {
+      res.json({
+        found: true,
+        trigger,
+        nextMessage: messageLibraryService.getMessageById(trigger.targetId)
+      });
+    } else {
+      res.json({
+        found: false,
+        buttonId,
+        message: 'No trigger found for this button'
+      });
+    }
+  } catch (error) {
+    console.error('Error finding button trigger:', error);
+    res.status(500).json({ error: 'Failed to find button trigger' });
+  }
+});
+
+// Find list trigger
+router.post('/triggers/list', (req, res) => {
+  try {
+    const { listItemId } = req.body;
+    
+    if (!listItemId) {
+      return res.status(400).json({ error: 'listItemId is required' });
+    }
+    
+    const trigger = messageLibraryService.findListTrigger(listItemId);
+    
+    if (trigger) {
+      res.json({
+        found: true,
+        trigger,
+        nextMessage: messageLibraryService.getMessageById(trigger.targetId)
+      });
+    } else {
+      res.json({
+        found: false,
+        listItemId,
+        message: 'No trigger found for this list item'
+      });
+    }
+  } catch (error) {
+    console.error('Error finding list trigger:', error);
+    res.status(500).json({ error: 'Failed to find list trigger' });
+  }
+});
+
+// Send interactive welcome message
+router.post('/send-welcome-interactive', async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+    
+    if (!phoneNumber) {
+      return res.status(400).json({ error: 'phoneNumber is required' });
+    }
+    
+    const welcomeMessage = messageLibraryService.getMessageById('msg_welcome_interactive');
+    if (!welcomeMessage) {
+      return res.status(404).json({ error: 'Welcome interactive message not found' });
+    }
+    
+    const result = await messageLibraryService.sendLibraryMessage(welcomeMessage, phoneNumber);
+    res.json({
+      success: true,
+      message: 'Interactive welcome message sent',
+      result
+    });
+  } catch (error) {
+    console.error('Error sending interactive welcome message:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all interactive messages
+router.get('/messages/interactive', (req, res) => {
+  try {
+    const interactiveMessages = messageLibraryService.messages.filter(msg => 
+      msg.type === 'interactive_button' || msg.type === 'interactive_list'
+    );
+    res.json({
+      messages: interactiveMessages,
+      count: interactiveMessages.length
+    });
+  } catch (error) {
+    console.error('Error getting interactive messages:', error);
+    res.status(500).json({ error: 'Failed to get interactive messages' });
+  }
+});
+
+// Get all button-based triggers
+router.get('/triggers/interactive', (req, res) => {
+  try {
+    const interactiveTriggers = messageLibraryService.triggers.filter(trigger => 
+      trigger.triggerType === 'button_click' || trigger.triggerType === 'list_selection'
+    );
+    res.json({
+      triggers: interactiveTriggers,
+      count: interactiveTriggers.length
+    });
+  } catch (error) {
+    console.error('Error getting interactive triggers:', error);
+    res.status(500).json({ error: 'Failed to get interactive triggers' });
+  }
+});
+
 module.exports = router;

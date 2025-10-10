@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const { processWebhookPayload } = require('../services/webhookService');
+const { processWebhookPayload, simulateWebhook, simulateInteractiveWebhook } = require('../services/webhookService');
 
 const router = express.Router();
 
@@ -68,6 +68,104 @@ router.post('/', async (req, res) => {
   } catch (error) {
     console.error('❌ Error processing webhook:', error);
     res.status(500).send('Internal Server Error');
+  }
+});
+
+// Test webhook endpoints
+
+// Test text message webhook
+router.post('/test-text', async (req, res) => {
+  try {
+    const { message, phoneNumber } = req.body;
+    
+    if (!message || !phoneNumber) {
+      return res.status(400).json({ error: 'message and phoneNumber are required' });
+    }
+    
+    const result = await simulateWebhook(message, phoneNumber);
+    res.json(result);
+  } catch (error) {
+    console.error('Error testing text webhook:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Test interactive message webhook (button clicks)
+router.post('/test-interactive', async (req, res) => {
+  try {
+    const { interactiveData, phoneNumber } = req.body;
+    
+    if (!interactiveData || !phoneNumber) {
+      return res.status(400).json({ error: 'interactiveData and phoneNumber are required' });
+    }
+    
+    const result = await simulateInteractiveWebhook(interactiveData, phoneNumber);
+    res.json(result);
+  } catch (error) {
+    console.error('Error testing interactive webhook:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Test button click webhook
+router.post('/test-button', async (req, res) => {
+  try {
+    const { buttonId, phoneNumber } = req.body;
+    
+    if (!buttonId || !phoneNumber) {
+      return res.status(400).json({ error: 'buttonId and phoneNumber are required' });
+    }
+    
+    const interactiveData = {
+      type: 'button_reply',
+      button_reply: {
+        id: buttonId,
+        title: 'Test Button'
+      }
+    };
+    
+    const result = await simulateInteractiveWebhook(interactiveData, phoneNumber);
+    res.json({
+      success: true,
+      message: 'Button click webhook test completed',
+      buttonId,
+      phoneNumber,
+      result
+    });
+  } catch (error) {
+    console.error('Error testing button webhook:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Test list selection webhook
+router.post('/test-list', async (req, res) => {
+  try {
+    const { listItemId, phoneNumber } = req.body;
+    
+    if (!listItemId || !phoneNumber) {
+      return res.status(400).json({ error: 'listItemId and phoneNumber are required' });
+    }
+    
+    const interactiveData = {
+      type: 'list_reply',
+      list_reply: {
+        id: listItemId,
+        title: 'Test List Item'
+      }
+    };
+    
+    const result = await simulateInteractiveWebhook(interactiveData, phoneNumber);
+    res.json({
+      success: true,
+      message: 'List selection webhook test completed',
+      listItemId,
+      phoneNumber,
+      result
+    });
+  } catch (error) {
+    console.error('Error testing list webhook:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
