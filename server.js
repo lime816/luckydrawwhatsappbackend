@@ -54,6 +54,52 @@ app.get('/health', (req, res) => {
   });
 });
 
+// CORS Proxy endpoint for WhatsApp flow downloads
+app.get('/api/proxy/flow-json', async (req, res) => {
+  try {
+    const { url } = req.query;
+    
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing url parameter'
+      });
+    }
+
+    console.log('📥 Proxying flow JSON request:', url);
+
+    // Fetch the JSON from WhatsApp's download URL
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+
+    if (!response.ok) {
+      console.error('❌ Failed to fetch from download URL:', response.status);
+      return res.status(response.status).json({
+        success: false,
+        error: `Failed to fetch: ${response.statusText}`
+      });
+    }
+
+    const jsonData = await response.json();
+    console.log('✅ Flow JSON fetched successfully via proxy');
+
+    res.json({
+      success: true,
+      data: jsonData
+    });
+  } catch (error) {
+    console.error('❌ Proxy error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to proxy request'
+    });
+  }
+});
+
 // API routes
 app.use('/webhook', webhookRoutes);
 app.use('/api/triggers', triggerRoutes);
