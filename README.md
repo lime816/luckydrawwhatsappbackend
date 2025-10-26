@@ -115,6 +115,7 @@ Flow Builder Dashboard                 Backend API Server
 - **Trigger Service** (`services/triggerService.js`) - Matches keywords to flows
 - **WhatsApp Service** (`services/whatsappService.js`) - Sends messages and flows
 - **Flow Processor** (`services/webhookService.js`) - Handles form responses
+- **Message Library** (`routes/messageLibrary.js` + `services/messageLibraryService.js`) - Centralized store for reusable message templates and content blocks. Keeps responses consistent across triggers and flows and makes it easy to update messages in one place.
 
 ## 🚀 **Features**
 
@@ -614,16 +615,37 @@ whatsapp-backend/
 ├── routes/
 │   ├── webhook.js          # Webhook handling routes
 │   ├── triggers.js         # Trigger management routes
-│   └── whatsapp.js        # WhatsApp messaging routes
+│   ├── whatsapp.js        # WhatsApp messaging routes
+│   └── messageLibrary.js  # Message templates and library routes
 ├── services/
 │   ├── webhookService.js   # Webhook processing logic
 │   ├── triggerService.js   # Trigger management logic
-│   └── whatsappService.js  # WhatsApp API integration
+│   ├── whatsappService.js  # WhatsApp API integration
+│   └── messageLibraryService.js # Message template logic and utilities
 ├── server.js              # Main server file
 ├── package.json           # Dependencies and scripts
 ├── .env                   # Environment variables (create this)
 ├── .gitignore            # Git ignore rules
 └── README.md             # This file
+```
+
+### Message Library Service
+
+- Purpose: Centralizes reusable message templates and content blocks used by triggers, flows, and one-off messages. This keeps user-facing text consistent and makes updates low-risk because templates are stored and referenced in one place.
+- Files: `routes/messageLibrary.js` (HTTP API) and `services/messageLibraryService.js` (business logic).
+- Typical responsibilities:
+  - Store and retrieve message templates (text, placeholders, quick replies)
+  - Provide template interpolation using runtime data (e.g., user name, codes)
+  - Expose CRUD endpoints for managing templates (used by admin/dashboard)
+  - Offer helper methods for other services to fetch ready-to-send payloads
+
+Example (conceptual) usage from code:
+
+```js
+const { getTemplate } = require("./services/messageLibraryService");
+const template = getTemplate("welcome_message");
+const payload = template.render({ name: "John" });
+// then send payload via whatsappService
 ```
 
 ## 🔐 Security Features
