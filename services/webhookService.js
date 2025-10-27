@@ -18,16 +18,48 @@ if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
   supabaseRest.defaults.headers['Authorization'] = `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`;
 }
 
+// Prefer using the official Supabase server SDK when available (cleaner and avoids REST quirks)
+let supabaseAdmin = null;
+try {
+  const { createClient } = require('@supabase/supabase-js');
+  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+  }
+} catch (e) {
+  // supabase-js not installed — we'll fallback to REST calls via axios
+  supabaseAdmin = null;
+}
+
 // Helper: query contests by name fragment using ilike. Returns array or empty list on error.
 async function queryContestsByNameFragment(nameFragment) {
+  // Use supabase-js if available (safer)
+  try {
+    if (supabaseAdmin) {
+      const { data, error } = await supabaseAdmin
+        .from('contests')
+        .select('contest_id,name')
+        .ilike('name', `%${nameFragment}%`)
+        .limit(10);
+      if (error) {
+        console.error('❌ Supabase SDK query error for contests by name:', { nameFragment, error });
+        return [];
+      }
+      return data || [];
+    }
+  } catch (sdkErr) {
+    console.error('❌ Supabase SDK threw error:', sdkErr?.message || sdkErr);
+    // fall through to REST fallback
+  }
+
   if (!supabaseRest.defaults.baseURL) return [];
-  const encoded = encodeURIComponent(nameFragment);
-  const path = `/contests?name=ilike.%${encoded}%&select=contest_id,name`;
+  // Build query manually but encode only the fragment — keep ilike/% wrappers intact
+  const encodedFragment = encodeURIComponent(nameFragment);
+  const path = `/contests?select=contest_id,name&name=ilike.%${encodedFragment}%`;
   try {
     const resp = await supabaseRest.get(path);
     return resp.data || [];
   } catch (err) {
-    console.error('❌ Supabase query error for contests by name:', {
+    console.error('❌ Supabase REST query error for contests by name:', {
       nameFragment,
       status: err.response?.status,
       data: err.response?.data,
