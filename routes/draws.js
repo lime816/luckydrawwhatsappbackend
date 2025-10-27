@@ -46,6 +46,41 @@ router.post('/execute', async (req, res) => {
       return res.status(400).json({ error: 'Number of winners cannot exceed participants' });
     }
 
+    // Ensure there are enough prize slots remaining for this contest
+    // Sum prize quantities for the contest
+    const { data: prizesForContest, error: prizesErr } = await supabase
+      .from('prizes')
+      .select('prize_id, quantity')
+      .eq('contest_id', contestId);
+
+    if (prizesErr) throw prizesErr;
+
+    const totalPrizeSlots = (prizesForContest || []).reduce((sum, p) => sum + (p.quantity || 0), 0);
+
+    // Count already allocated winners for this contest by fetching draws for contest and counting winners
+    const { data: drawsForContest, error: drawsErr } = await supabase
+      .from('draws')
+      .select('draw_id')
+      .eq('contest_id', contestId);
+
+    if (drawsErr) throw drawsErr;
+
+    const drawIds = (drawsForContest || []).map(d => d.draw_id);
+
+    let existingWinnersCount = 0;
+    if (drawIds.length > 0) {
+      const { data: existingWinners } = await supabase
+        .from('winners')
+        .select('winner_id')
+        .in('draw_id', drawIds);
+      existingWinnersCount = (existingWinners || []).length;
+    }
+
+    const remainingPrizeSlots = totalPrizeSlots - existingWinnersCount;
+    if (numberOfWinners > remainingPrizeSlots) {
+      return res.status(400).json({ error: `Not enough prizes remaining. Requested ${numberOfWinners}, but only ${remainingPrizeSlots} prize slots are available.` });
+    }
+
     // Create the draw
     const { data: draw, error: drawErr } = await supabase
       .from('draws')
@@ -68,6 +103,8 @@ router.post('/execute', async (req, res) => {
     const winnerInserts = selected.map((p, idx) => ({
       draw_id: draw.draw_id,
       participant_id: p.participant_id,
+      // capture the participant name redundantly on the winner row for easier reporting
+      winner_name: p.name || null,
       prize_id: (prizeIds && prizeIds[idx]) || null,
       prize_status: 'PENDING',
       notified: false,
