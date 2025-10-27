@@ -17,7 +17,13 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 // body: { contestId, executedBy, numberOfWinners, prizeIds }
 router.post('/execute', async (req, res) => {
   try {
+    console.log('POST /api/draws/execute request body:', req.body);
     const { contestId, executedBy, numberOfWinners, prizeIds } = req.body;
+
+    if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+      console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in server environment');
+      return res.status(500).json({ success: false, error: 'Server not configured with Supabase service role key' });
+    }
 
     if (!contestId || !numberOfWinners) {
       return res.status(400).json({ error: 'Missing contestId or numberOfWinners' });
@@ -82,6 +88,7 @@ router.post('/execute', async (req, res) => {
 
     if (joinedErr) throw joinedErr;
 
+    console.log(`Draw ${draw.draw_id} created with ${winnersWithJoins.length} winners`);
     res.json({ success: true, draw, winners: winnersWithJoins });
   } catch (error) {
     console.error('Error in /api/draws/execute:', error);
