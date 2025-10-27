@@ -149,7 +149,12 @@ router.post('/execute', async (req, res) => {
       res.json({ success: true, draw, winners: winnersWithJoins, persistedWinners });
   } catch (error) {
     console.error('Error in /api/draws/execute:', error);
-    res.status(500).json({ success: false, error: error.message || error });
+    // If the database trigger prevented allocation, surface a 409 Conflict
+    const msg = (error && error.message) ? String(error.message) : '';
+    if (msg.includes('Prize allocation exceeded')) {
+      return res.status(409).json({ success: false, error: msg });
+    }
+    res.status(500).json({ success: false, error: msg || error });
   }
 });
 
