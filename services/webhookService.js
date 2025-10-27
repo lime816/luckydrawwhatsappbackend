@@ -185,50 +185,48 @@ async function handleIncomingMessage(message) {
     // message as their name and finalize registration.
     if (supabaseRest.defaults.baseURL && messageText) {
       try {
-        const pendingResp = await supabaseRest.get(`/participants?contact=eq.${encodeURIComponent(message.from)}&name=is.null`);
+        // Query recent participants for this contact and look for a pending row where name is empty or null
+        const pendingResp = await supabaseRest.get(`/participants?contact=eq.${encodeURIComponent(message.from)}&limit=10`);
         if (pendingResp.data && pendingResp.data.length > 0) {
-          const pending = pendingResp.data[0];
-          const participantId = pending.participant_id || pending.id || pending.participant_id;
-          const providedName = message.text?.body || messageText;
+          const pending = pendingResp.data.find(p => p.name === null || (typeof p.name === 'string' && p.name.trim() === ''));
+          if (pending) {
+            const participantId = pending.participant_id || pending.id || pending.participant_id;
+            const providedName = message.text?.body || messageText;
 
-          // Update participant with name, mark validated true, add unique token
-          const uniqueToken = `p_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-          const updateBody = {
-            name: providedName,
-            validated: true,
-            unique_token: uniqueToken
-          };
+            // Update participant with name, mark validated true, add unique token
+            const uniqueToken = `p_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+            const updateBody = {
+              name: providedName,
+              validated: true,
+              unique_token: uniqueToken
+            };
 
-          try {
-            await supabaseRest.patch(`/participants?participant_id=eq.${participantId}`).send(updateBody);
-          } catch (patchErr) {
-            // axios.patch with supabase may need data directly
             try {
               await supabaseRest.patch(`/participants?participant_id=eq.${participantId}`, updateBody);
-            } catch (innerErr) {
-              console.warn('⚠️  Failed to update participant (attempt):', innerErr.response?.data || innerErr.message);
+            } catch (patchErr) {
+              console.warn('⚠️  Failed to update participant:', patchErr.response?.data || patchErr.message || patchErr);
             }
-          }
 
-          // Fetch contest name for confirmation
-          let contestName = 'this contest';
-          try {
-            const c = await supabaseRest.get(`/contests?contest_id=eq.${pending.contest_id}&select=name`);
-            if (c.data && c.data.length > 0) contestName = c.data[0].name || contestName;
-          } catch (err) {
-            console.warn('⚠️  Could not fetch contest name for confirmation:', err.message);
-          }
+            // Fetch contest name for confirmation
+            let contestName = 'this contest';
+            try {
+              const c = await supabaseRest.get(`/contests?contest_id=eq.${pending.contest_id}&select=name`);
+              if (c.data && c.data.length > 0) contestName = c.data[0].name || contestName;
+            } catch (err) {
+              console.warn('⚠️  Could not fetch contest name for confirmation:', err.message);
+            }
 
-          // Send confirmation
-          const confirm = `Thanks ${providedName}! 🎉 You're now registered for ${contestName}. We'll notify you with further details.`;
-          try {
-            await sendTextMessage(message.from, confirm);
-            console.log(`✅ Sent registration confirmation to ${message.from}`);
-          } catch (err) {
-            console.error('❌ Failed to send confirmation message:', err.message);
-          }
+            // Send confirmation
+            const confirm = `Thanks ${providedName}! 🎉 You're now registered for ${contestName}. We'll notify you with further details.`;
+            try {
+              await sendTextMessage(message.from, confirm);
+              console.log(`✅ Sent registration confirmation to ${message.from}`);
+            } catch (err) {
+              console.error('❌ Failed to send confirmation message:', err.message);
+            }
 
-          return; // handled
+            return; // handled
+          }
         }
       } catch (err) {
         console.warn('⚠️  Error checking pending participant for contact:', err.message);
@@ -250,7 +248,7 @@ async function handleIncomingMessage(message) {
             if (supabaseRest.defaults.baseURL) {
               await supabaseRest.post('/participants', {
                 contest_id: contestId,
-                name: null,
+                name: '',
                 contact: message.from,
                 validated: false
               });
@@ -281,13 +279,13 @@ async function handleIncomingMessage(message) {
                 const contest = matches[0];
                 // create pending participant
                 try {
-                    // participants.name is NOT NULL in the DB schema, so insert an empty string
-                    await supabaseRest.post('/participants', {
-                      contest_id: contest.contest_id,
-                      name: '',
-                      contact: message.from,
-                      validated: false
-                    });
+                  // participants.name is NOT NULL in the DB schema, so insert an empty string
+                  await supabaseRest.post('/participants', {
+                    contest_id: contest.contest_id,
+                    name: '',
+                    contact: message.from,
+                    validated: false
+                  });
                   const prompt = `Hi! 👋 Welcome to ${contest.name}. Please reply with your full name to complete registration.`;
                   await sendTextMessage(message.from, prompt);
                   continue;
@@ -350,7 +348,7 @@ async function handleIncomingMessage(message) {
                   try {
                     await supabaseRest.post('/participants', {
                       contest_id: contest.contest_id,
-                      name: null,
+                      name: '',
                       contact: message.from,
                       validated: false
                     });
