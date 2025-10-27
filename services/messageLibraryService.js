@@ -478,7 +478,33 @@ class MessageLibraryService {
   // Find matching triggers for a message
   findMatchingTriggers(messageText) {
     const normalizedText = messageText.toLowerCase().trim();
-    
+    // Quick registration marker detection (e.g., REGISTER_CONTEST:123)
+    const regMatch = messageText.match(/register_contest:\s*(\d+)/i);
+    if (regMatch) {
+      const contestId = Number(regMatch[1]);
+      return [{
+        triggerId: `register_${contestId}`,
+        triggerType: 'registration',
+        triggerValue: contestId,
+        nextAction: 'start_registration',
+        targetId: contestId
+      }];
+    }
+
+    // Welcome-style messages e.g. "welcome to \"Contest Name\"" — infer contest by name fragment
+    const welcomeMatch = messageText.match(/welcome to\s*\"?([^\"]+)\"?/i);
+    if (welcomeMatch) {
+      const nameFragment = welcomeMatch[1].trim();
+      return [{
+        triggerId: `register_by_name_${nameFragment.replace(/\s+/g, '_').toLowerCase()}`,
+        triggerType: 'registration_name_infer',
+        triggerValue: nameFragment,
+        nextAction: 'start_registration_by_name',
+        targetId: nameFragment
+      }];
+    }
+
+    // Default keyword matching
     return this.triggers.filter(trigger => {
       if (trigger.triggerType === 'keyword_match') {
         const keywords = Array.isArray(trigger.triggerValue) 

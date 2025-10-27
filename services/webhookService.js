@@ -190,6 +190,65 @@ async function handleIncomingMessage(message) {
       console.log(`🎯 Found ${matchingTriggers.length} matching trigger(s)`);
       
       for (const trigger of matchingTriggers) {
+        if (trigger.nextAction === 'start_registration') {
+          // Trigger carries contest id in targetId
+          const contestId = Number(trigger.targetId);
+          console.log(`🔔 Trigger requests registration start for contest ${contestId}`);
+          try {
+            if (supabaseRest.defaults.baseURL) {
+              await supabaseRest.post('/participants', {
+                contest_id: contestId,
+                name: null,
+                contact: message.from,
+                validated: false
+              });
+            }
+            // Fetch contest name
+            let contestName = 'this contest';
+            if (supabaseRest.defaults.baseURL) {
+              try {
+                const r = await supabaseRest.get(`/contests?contest_id=eq.${contestId}&select=name`);
+                if (r.data && r.data.length > 0) contestName = r.data[0].name || contestName;
+              } catch (err) { /* ignore */ }
+            }
+            await sendTextMessage(message.from, `Hi! 👋 Welcome to ${contestName}. Please reply with your full name to complete registration.`);
+          } catch (err) {
+            console.warn('⚠️ Error handling start_registration trigger:', err.response?.data || err.message || err);
+          }
+          continue;
+        }
+
+        if (trigger.nextAction === 'start_registration_by_name') {
+          // Trigger carries a name fragment in targetId
+          const nameFragment = String(trigger.targetId || trigger.triggerValue).trim();
+          console.log(`🔔 Trigger requests registration by name fragment: ${nameFragment}`);
+          try {
+            if (supabaseRest.defaults.baseURL) {
+              const q = `/contests?name=ilike.%${encodeURIComponent(nameFragment)}%&select=contest_id,name`;
+              const resp = await supabaseRest.get(q);
+              if (resp.data && resp.data.length > 0) {
+                const contest = resp.data[0];
+                // create pending participant
+                try {
+                  await supabaseRest.post('/participants', {
+                    contest_id: contest.contest_id,
+                    name: null,
+                    contact: message.from,
+                    validated: false
+                  });
+                  const prompt = `Hi! 👋 Welcome to ${contest.name}. Please reply with your full name to complete registration.`;
+                  await sendTextMessage(message.from, prompt);
+                  continue;
+                } catch (err) {
+                  console.warn('⚠️ Failed to create pending participant via registration-by-name trigger:', err.response?.data || err.message);
+                }
+              }
+            }
+          } catch (err) {
+            console.warn('⚠️ Error querying contests for registration-by-name trigger:', err.message);
+          }
+        }
+
         if (trigger.nextAction === 'send_message') {
           // Get the message from library
           const messageEntry = messageLibraryService.getMessageById(trigger.targetId);
@@ -221,6 +280,48 @@ async function handleIncomingMessage(message) {
         console.log(`🔄 Using legacy trigger: "${oldTrigger.keyword}" -> Flow: ${oldTrigger.flowId}`);
         await sendFlowMessage(message.from, oldTrigger.flowId, oldTrigger.message);
         console.log(`✅ Successfully sent legacy flow ${oldTrigger.flowId} to ${message.from}`);
+      } else {
+        // Additional fallback: try to infer contest from welcome message when prefill marker missing
+        // e.g. messageText = 'welcome to "test2"' or 'welcome to test2'
+        try {
+          const welcomeMatch = messageText.match(/welcome to\s*\"?([^\"]+)\"?/i);
+          if (welcomeMatch) {
+            const contestNameGuess = welcomeMatch[1].trim();
+            console.log(`🔎 Attempting contest lookup by name fragment: "${contestNameGuess}"`);
+            if (supabaseRest.defaults.baseURL) {
+              try {
+                const q = `/contests?name=ilike.%${encodeURIComponent(contestNameGuess)}%&select=contest_id,name`;
+                const resp = await supabaseRest.get(q);
+                if (resp.data && resp.data.length > 0) {
+                  const contest = resp.data[0];
+                  console.log(`✅ Found contest by name: ${contest.name} (${contest.contest_id}) - creating pending participant`);
+                  // create pending participant
+                  try {
+                    await supabaseRest.post('/participants', {
+                      contest_id: contest.contest_id,
+                      name: null,
+                      contact: message.from,
+                      validated: false
+                    });
+                    // prompt for name
+                    const prompt = `Hi! 👋 Welcome to ${contest.name}. Please reply with your full name to complete registration.`;
+                    await sendTextMessage(message.from, prompt);
+                    console.log(`📤 Sent name prompt to ${message.from} for contest ${contest.contest_id}`);
+                    return; // handled
+                  } catch (err) {
+                    console.warn('⚠️ Failed to create pending participant via fallback lookup:', err.response?.data || err.message);
+                  }
+                } else {
+                  console.log('🔍 No contest matched the guessed name');
+                }
+              } catch (err) {
+                console.warn('⚠️ Error querying contests for fallback lookup:', err.message);
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('⚠️ Error during fallback contest inference:', err.message);
+        }
       }
     }
   } catch (error) {
