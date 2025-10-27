@@ -1,6 +1,22 @@
-const { sendFlowMessage } = require('./whatsappService');
+const { sendFlowMessage, sendTextMessage } = require('./whatsappService');
 const { findMatchingTrigger } = require('./triggerService');
 const messageLibraryService = require('./messageLibraryService');
+const axios = require('axios');
+
+// Supabase REST helper - backend should have SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in env
+const supabaseRest = axios.create({
+  baseURL: process.env.SUPABASE_URL ? `${process.env.SUPABASE_URL}/rest/v1` : null,
+  headers: {
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation'
+  },
+  timeout: 8000
+});
+
+if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  supabaseRest.defaults.headers['apikey'] = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  supabaseRest.defaults.headers['Authorization'] = `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`;
+}
 
 /**
  * Process incoming webhook payload from WhatsApp Business API
@@ -59,6 +75,113 @@ async function handleIncomingMessage(message) {
     }
 
     console.log(`💬 Message text: "${messageText}"`);
+
+    // ===== Registration flow support =====
+    // We expect initial QR prefilled messages to include a marker like:
+    //   REGISTER_CONTEST:<contest_id> <optional text>
+    // Example prefill: "REGISTER_CONTEST:123 Welcome to \"Prize Draw\""
+    // If we see that marker, create a pending participant and ask for the name.
+    const regMatch = messageText.match(/register_contest:\s*(\d+)/i);
+    if (regMatch) {
+      const contestId = Number(regMatch[1]);
+      console.log(`🆕 Detected registration start for contest ${contestId} from ${message.from}`);
+
+      try {
+        // Fetch contest info (name) if Supabase URL provided
+        let contestName = 'this contest';
+        if (supabaseRest.defaults.baseURL) {
+          try {
+            const resp = await supabaseRest.get(`/contests?contest_id=eq.${contestId}&select=name`);
+            if (resp.data && resp.data.length > 0) contestName = resp.data[0].name || contestName;
+          } catch (err) {
+            console.warn('⚠️  Could not fetch contest name from Supabase:', err.message);
+          }
+        }
+
+        // Insert pending participant (name null, validated false)
+        if (supabaseRest.defaults.baseURL) {
+          try {
+            const insertBody = {
+              contest_id: contestId,
+              name: null,
+              contact: message.from,
+              validated: false
+            };
+            await supabaseRest.post('/participants', insertBody);
+            console.log(`✅ Created pending participant for ${message.from} in contest ${contestId}`);
+          } catch (err) {
+            console.warn('⚠️  Failed to create participant via Supabase REST:', err.response?.data || err.message);
+          }
+        }
+
+        // Ask for the participant's name
+        const prompt = `Hi! 👋 Welcome to ${contestName}. Please reply with your full name to complete registration.`;
+        try {
+          await sendTextMessage(message.from, prompt);
+          console.log(`📤 Sent name prompt to ${message.from}`);
+        } catch (err) {
+          console.error('❌ Failed to send name prompt:', err.message);
+        }
+
+        return; // handled
+      } catch (err) {
+        console.error('❌ Error starting registration flow:', err);
+      }
+    }
+
+    // If there's an existing pending participant for this contact (name is null), treat the incoming
+    // message as their name and finalize registration.
+    if (supabaseRest.defaults.baseURL && messageText) {
+      try {
+        const pendingResp = await supabaseRest.get(`/participants?contact=eq.${encodeURIComponent(message.from)}&name=is.null`);
+        if (pendingResp.data && pendingResp.data.length > 0) {
+          const pending = pendingResp.data[0];
+          const participantId = pending.participant_id || pending.id || pending.participant_id;
+          const providedName = message.text?.body || messageText;
+
+          // Update participant with name, mark validated true, add unique token
+          const uniqueToken = `p_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+          const updateBody = {
+            name: providedName,
+            validated: true,
+            unique_token: uniqueToken
+          };
+
+          try {
+            await supabaseRest.patch(`/participants?participant_id=eq.${participantId}`).send(updateBody);
+          } catch (patchErr) {
+            // axios.patch with supabase may need data directly
+            try {
+              await supabaseRest.patch(`/participants?participant_id=eq.${participantId}`, updateBody);
+            } catch (innerErr) {
+              console.warn('⚠️  Failed to update participant (attempt):', innerErr.response?.data || innerErr.message);
+            }
+          }
+
+          // Fetch contest name for confirmation
+          let contestName = 'this contest';
+          try {
+            const c = await supabaseRest.get(`/contests?contest_id=eq.${pending.contest_id}&select=name`);
+            if (c.data && c.data.length > 0) contestName = c.data[0].name || contestName;
+          } catch (err) {
+            console.warn('⚠️  Could not fetch contest name for confirmation:', err.message);
+          }
+
+          // Send confirmation
+          const confirm = `Thanks ${providedName}! 🎉 You're now registered for ${contestName}. We'll notify you with further details.`;
+          try {
+            await sendTextMessage(message.from, confirm);
+            console.log(`✅ Sent registration confirmation to ${message.from}`);
+          } catch (err) {
+            console.error('❌ Failed to send confirmation message:', err.message);
+          }
+
+          return; // handled
+        }
+      } catch (err) {
+        console.warn('⚠️  Error checking pending participant for contact:', err.message);
+      }
+    }
 
     // NEW: Use Message Library instead of old trigger system
     const matchingTriggers = messageLibraryService.findMatchingTriggers(messageText);
