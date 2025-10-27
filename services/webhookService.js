@@ -151,18 +151,19 @@ async function handleIncomingMessage(message) {
 
         // Insert pending participant (name null, validated false)
         if (supabaseRest.defaults.baseURL) {
-          try {
-            const insertBody = {
-              contest_id: contestId,
-              name: null,
-              contact: message.from,
-              validated: false
-            };
-            await supabaseRest.post('/participants', insertBody);
-            console.log(`✅ Created pending participant for ${message.from} in contest ${contestId}`);
-          } catch (err) {
-            console.warn('⚠️  Failed to create participant via Supabase REST:', err.response?.data || err.message);
-          }
+            try {
+              // participants.name is NOT NULL in the DB schema, so insert an empty string
+              const insertBody = {
+                contest_id: contestId,
+                name: '',
+                contact: message.from,
+                validated: false
+              };
+              await supabaseRest.post('/participants', insertBody);
+              console.log(`✅ Created pending participant for ${message.from} in contest ${contestId}`);
+            } catch (err) {
+              console.warn('⚠️  Failed to create participant via Supabase REST:', err.response?.data || err.message);
+            }
         }
 
         // Ask for the participant's name
@@ -280,12 +281,13 @@ async function handleIncomingMessage(message) {
                 const contest = matches[0];
                 // create pending participant
                 try {
-                  await supabaseRest.post('/participants', {
-                    contest_id: contest.contest_id,
-                    name: null,
-                    contact: message.from,
-                    validated: false
-                  });
+                    // participants.name is NOT NULL in the DB schema, so insert an empty string
+                    await supabaseRest.post('/participants', {
+                      contest_id: contest.contest_id,
+                      name: '',
+                      contact: message.from,
+                      validated: false
+                    });
                   const prompt = `Hi! 👋 Welcome to ${contest.name}. Please reply with your full name to complete registration.`;
                   await sendTextMessage(message.from, prompt);
                   continue;
