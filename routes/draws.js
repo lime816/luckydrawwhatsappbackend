@@ -125,16 +125,28 @@ router.post('/execute', async (req, res) => {
 
     console.log('Inserted winners:', JSON.stringify(winners, null, 2));
 
-    // Return draw and winners with participant info
-    const { data: winnersWithJoins, error: joinedErr } = await supabase
-      .from('winners')
-      .select(`*, participants(*), prizes(*), draws(*)`)
-      .eq('draw_id', draw.draw_id);
+      // Read back persisted winners explicitly (select only the columns we care about)
+      const { data: persistedWinners, error: persistedErr } = await supabase
+        .from('winners')
+        .select('winner_id, draw_id, participant_id, winner_name, prize_id, prize_status, notified')
+        .eq('draw_id', draw.draw_id);
 
-    if (joinedErr) throw joinedErr;
+      if (persistedErr) {
+        console.warn('Could not read back persisted winners:', persistedErr);
+      } else {
+        console.log('Persisted winners (raw):', JSON.stringify(persistedWinners, null, 2));
+      }
 
-    console.log(`Draw ${draw.draw_id} created with ${winnersWithJoins.length} winners`);
-    res.json({ success: true, draw, winners: winnersWithJoins });
+      // Return draw and winners with participant info
+      const { data: winnersWithJoins, error: joinedErr } = await supabase
+        .from('winners')
+        .select(`*, participants(*), prizes(*), draws(*)`)
+        .eq('draw_id', draw.draw_id);
+
+      if (joinedErr) throw joinedErr;
+
+      console.log(`Draw ${draw.draw_id} created with ${winnersWithJoins.length} winners`);
+      res.json({ success: true, draw, winners: winnersWithJoins, persistedWinners });
   } catch (error) {
     console.error('Error in /api/draws/execute:', error);
     res.status(500).json({ success: false, error: error.message || error });
