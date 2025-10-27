@@ -100,15 +100,21 @@ router.post('/execute', async (req, res) => {
     const selected = shuffled.slice(0, numberOfWinners);
 
     // Insert winners
-    const winnerInserts = selected.map((p, idx) => ({
-      draw_id: draw.draw_id,
-      participant_id: p.participant_id,
-      // capture the participant name redundantly on the winner row for easier reporting
-      winner_name: p.name || null,
-      prize_id: (prizeIds && prizeIds[idx]) || null,
-      prize_status: 'PENDING',
-      notified: false,
-    }));
+    const winnerInserts = selected.map((p, idx) => {
+      // Prefer a trimmed participant name; fall back to contact if name missing/empty
+      const nameVal = (p && p.name && String(p.name).trim()) ? String(p.name).trim() : (p && p.contact ? String(p.contact) : null);
+      return {
+        draw_id: draw.draw_id,
+        participant_id: p.participant_id,
+        // capture the participant name redundantly on the winner row for easier reporting
+        winner_name: nameVal,
+        prize_id: (prizeIds && prizeIds[idx]) || null,
+        prize_status: 'PENDING',
+        notified: false,
+      };
+    });
+
+    console.log('Winner inserts:', JSON.stringify(winnerInserts, null, 2));
 
     const { data: winners, error: winnersErr } = await supabase
       .from('winners')
@@ -116,6 +122,8 @@ router.post('/execute', async (req, res) => {
       .select();
 
     if (winnersErr) throw winnersErr;
+
+    console.log('Inserted winners:', JSON.stringify(winners, null, 2));
 
     // Return draw and winners with participant info
     const { data: winnersWithJoins, error: joinedErr } = await supabase
