@@ -8,6 +8,7 @@ const webhookRoutes = require('./routes/webhook');
 const triggerRoutes = require('./routes/triggers');
 const whatsappRoutes = require('./routes/whatsapp');
 const messageLibraryRoutes = require('./routes/messageLibrary');
+const drawsRoutes = require('./routes/draws');
 
 const app = express();
 
@@ -105,6 +106,7 @@ app.use('/webhook', webhookRoutes);
 app.use('/api/triggers', triggerRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/message-library', messageLibraryRoutes);
+app.use('/api/draws', drawsRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
