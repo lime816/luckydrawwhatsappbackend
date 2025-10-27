@@ -18,6 +18,25 @@ if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
   supabaseRest.defaults.headers['Authorization'] = `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`;
 }
 
+// Helper: query contests by name fragment using ilike. Returns array or empty list on error.
+async function queryContestsByNameFragment(nameFragment) {
+  if (!supabaseRest.defaults.baseURL) return [];
+  const encoded = encodeURIComponent(nameFragment);
+  const path = `/contests?name=ilike.%${encoded}%&select=contest_id,name`;
+  try {
+    const resp = await supabaseRest.get(path);
+    return resp.data || [];
+  } catch (err) {
+    console.error('❌ Supabase query error for contests by name:', {
+      nameFragment,
+      status: err.response?.status,
+      data: err.response?.data,
+      message: err.message
+    });
+    return [];
+  }
+}
+
 /**
  * Process incoming webhook payload from WhatsApp Business API
  */
@@ -224,10 +243,9 @@ async function handleIncomingMessage(message) {
           console.log(`🔔 Trigger requests registration by name fragment: ${nameFragment}`);
           try {
             if (supabaseRest.defaults.baseURL) {
-              const q = `/contests?name=ilike.%${encodeURIComponent(nameFragment)}%&select=contest_id,name`;
-              const resp = await supabaseRest.get(q);
-              if (resp.data && resp.data.length > 0) {
-                const contest = resp.data[0];
+              const matches = await queryContestsByNameFragment(nameFragment);
+              if (matches && matches.length > 0) {
+                const contest = matches[0];
                 // create pending participant
                 try {
                   await supabaseRest.post('/participants', {
@@ -290,10 +308,9 @@ async function handleIncomingMessage(message) {
             console.log(`🔎 Attempting contest lookup by name fragment: "${contestNameGuess}"`);
             if (supabaseRest.defaults.baseURL) {
               try {
-                const q = `/contests?name=ilike.%${encodeURIComponent(contestNameGuess)}%&select=contest_id,name`;
-                const resp = await supabaseRest.get(q);
-                if (resp.data && resp.data.length > 0) {
-                  const contest = resp.data[0];
+                const matches = await queryContestsByNameFragment(contestNameGuess);
+                if (matches && matches.length > 0) {
+                  const contest = matches[0];
                   console.log(`✅ Found contest by name: ${contest.name} (${contest.contest_id}) - creating pending participant`);
                   // create pending participant
                   try {
