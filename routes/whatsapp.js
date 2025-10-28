@@ -1,5 +1,5 @@
 const express = require('express');
-const { sendFlowMessage, testWhatsAppConnection } = require('../services/whatsappService');
+const { sendFlowMessage, sendTextMessage, testWhatsAppConnection } = require('../services/whatsappService');
 
 const router = express.Router();
 
