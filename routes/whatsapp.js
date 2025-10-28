@@ -50,6 +50,24 @@ router.post('/send-flow', async (req, res) => {
   }
 });
 
+// Send plain text message (uses service role on backend)
+router.post('/send-text', async (req, res) => {
+  try {
+    const { phoneNumber, text } = req.body;
+
+    if (!phoneNumber || !text) {
+      return res.status(400).json({ success: false, error: 'phoneNumber and text are required' });
+    }
+
+    const result = await sendTextMessage(phoneNumber, text);
+
+    res.json({ success: true, data: result, message: 'Text message sent' });
+  } catch (error) {
+    console.error('Error sending text message:', error);
+    res.status(500).json({ success: false, error: 'Failed to send text message', details: error.message });
+  }
+});
+
 // Get WhatsApp configuration status
 router.get('/config', (req, res) => {
   const config = {
